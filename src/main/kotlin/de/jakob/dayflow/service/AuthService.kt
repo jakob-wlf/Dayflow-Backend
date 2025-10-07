@@ -29,6 +29,18 @@ class AuthService(
         return userRepository.save(user)
     }
 
+    fun oauthLogin(email: String) {
+        if (!userRepository.findByEmail(email).isPresent) {
+            val user = User(
+                email = email,
+                password = passwordEncoder.encode(UUID.randomUUID().toString()), // random password
+                enabled = true
+            )
+            userRepository.save(user)
+        }
+    }
+
+
     fun login(request: LoginRequest): String {
         val user = userRepository.findByEmail(request.email)
             .orElseThrow { IllegalArgumentException("Invalid email or password") }
