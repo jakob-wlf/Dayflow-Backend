@@ -41,6 +41,20 @@ class HabitController(
         return habitService.completeHabit(habit)
     }
 
+    // Date must be formatted with format: YYYY-MM-DD
+    @PostMapping("/{id}/complete/{date}")
+    fun completeHabitForDay(
+        @AuthenticationPrincipal user: SecurityUser,
+        @PathVariable id: Long,
+        @PathVariable date: String
+    ): Habit {
+        val appUser = userRepository.findByEmail(user.username).get()
+        val habit = habitService.getHabitsForUser(appUser).find { it.id == id }
+            ?: throw IllegalArgumentException("Habit not found")
+
+        return habitService.completeHabit(habit, LocalDate.parse(date))
+    }
+
     @GetMapping("/{id}/history")
     fun getHabitHistory(
         @AuthenticationPrincipal user: SecurityUser,

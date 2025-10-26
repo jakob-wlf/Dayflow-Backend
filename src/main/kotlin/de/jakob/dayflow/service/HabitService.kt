@@ -6,6 +6,7 @@ import de.jakob.dayflow.entity.User
 import de.jakob.dayflow.repository.HabitRepository
 import org.springframework.stereotype.Service
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 @Service
 class HabitService(
@@ -31,11 +32,55 @@ class HabitService(
         habit.completions.add(completion)
 
         // Update streak
-        val lastDate = habit.completions.maxOfOrNull { it.date }
-        habit.streak = if (lastDate == today.minusDays(1)) habit.streak + 1 else 1
+        updateStreak(habit)
 
         return habitRepository.save(habit)
     }
+
+    fun completeHabit(habit: Habit, date: LocalDate): Habit {
+        // Check if already completed today
+        if (habit.completions.any { it.date == date }) return habit
+
+        // Add a completion record
+        val completion = HabitCompletion(habit = habit, date = date)
+        habit.completions.add(completion)
+
+        // Update streak
+        updateStreak(habit)
+
+        return habitRepository.save(habit)
+    }
+
+    fun updateStreak(habit: Habit) {
+        val completions = habit.completions
+            .map { it.date }
+            .sortedDescending()
+
+        if (completions.isEmpty()) {
+            habit.streak = 0
+            habit.lastCompletedDate = null
+            return
+        }
+
+        var streak = 1
+        var lastDate = completions.first()
+        // Go through each completion and check continuity
+        for (i in 1 until completions.size) {
+            val current = completions[i]
+            val daysBetween = ChronoUnit.DAYS.between(current, lastDate)
+
+            if (daysBetween == 1L) {
+                streak++
+                lastDate = current
+            } else if (daysBetween > 1L) {
+                break // streak broken
+            }
+        }
+
+        habit.streak = streak
+        habit.lastCompletedDate = completions.first()
+    }
+
 
     fun getCompletionHistory(habit: Habit): List<LocalDate> =
         habit.completions.map { it.date }
