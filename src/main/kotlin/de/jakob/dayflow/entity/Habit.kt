@@ -12,9 +12,7 @@ data class Habit(
 
     var name: String,
 
-    var frequency: String, // e.g., "daily", "weekly"
-
-    var completedToday: Boolean = false,
+    var frequency: Long, // 1: daily, 2: every 2 days and so on
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
@@ -22,7 +20,6 @@ data class Habit(
 
     @OneToMany(mappedBy = "habit", cascade = [CascadeType.ALL], orphanRemoval = true)
     var completions: MutableList<HabitCompletion> = mutableListOf(),
-
 
     var streak: Int = 0, // consecutive days the habit was completed
     var lastCompletedDate: LocalDate? = null // to track streak continuity

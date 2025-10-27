@@ -1,5 +1,6 @@
 package de.jakob.dayflow.controller
 
+import de.jakob.dayflow.dto.HabitResponseDTO
 import de.jakob.dayflow.entity.Habit
 import de.jakob.dayflow.entity.User
 import de.jakob.dayflow.repository.UserRepository
@@ -17,13 +18,13 @@ class HabitController(
 ) {
 
     @GetMapping
-    fun getHabits(@AuthenticationPrincipal user: SecurityUser): List<Habit> {
+    fun getHabits(@AuthenticationPrincipal user: SecurityUser): List<HabitResponseDTO> {
         val appUser = userRepository.findByEmail(user.username).get()
         return habitService.getHabitsForUser(appUser)
     }
 
     @PostMapping
-    fun createHabit(@AuthenticationPrincipal user: SecurityUser, @RequestBody habit: Habit): Habit {
+    fun createHabit(@AuthenticationPrincipal user: SecurityUser, @RequestBody habit: Habit): HabitResponseDTO {
         val appUser = userRepository.findByEmail(user.username).get()
         habit.user = appUser
         return habitService.createHabit(habit)
@@ -33,9 +34,9 @@ class HabitController(
     fun completeHabit(
         @AuthenticationPrincipal user: SecurityUser,
         @PathVariable id: Long
-    ): Habit {
+    ): HabitResponseDTO {
         val appUser = userRepository.findByEmail(user.username).get()
-        val habit = habitService.getHabitsForUser(appUser).find { it.id == id }
+        val habit = habitService.getRawHabitsForUser(appUser).find { it.id == id }
             ?: throw IllegalArgumentException("Habit not found")
 
         return habitService.completeHabit(habit)
@@ -47,62 +48,52 @@ class HabitController(
         @AuthenticationPrincipal user: SecurityUser,
         @PathVariable id: Long,
         @PathVariable date: String
-    ): Habit {
+    ): HabitResponseDTO {
         val appUser = userRepository.findByEmail(user.username).get()
-        val habit = habitService.getHabitsForUser(appUser).find { it.id == id }
+        val habit = habitService.getRawHabitsForUser(appUser).find { it.id == id }
             ?: throw IllegalArgumentException("Habit not found")
 
         return habitService.completeHabit(habit, LocalDate.parse(date))
     }
 
-    @GetMapping("/{id}/history")
-    fun getHabitHistory(
-        @AuthenticationPrincipal user: SecurityUser,
-        @PathVariable id: Long
-    ): List<LocalDate> {
-        val appUser = userRepository.findByEmail(user.username).get()
-        val habit = habitService.getHabitsForUser(appUser).find { it.id == id }
-            ?: throw IllegalArgumentException("Habit not found")
-
-        return habitService.getCompletionHistory(habit)
-    }
-
-    @GetMapping("/{id}/completion-map")
-    fun getHabitCompletionMap(
+    // Date must be formatted with format: YYYY-MM-DD
+    @PostMapping("/{id}/uncomplete/{date}")
+    fun unCompleteHabitForDay(
         @AuthenticationPrincipal user: SecurityUser,
         @PathVariable id: Long,
-        @RequestParam("startDate") startDate: String,
-        @RequestParam("endDate") endDate: String
-    ): Map<String, Boolean> {
+        @PathVariable date: String
+    ): HabitResponseDTO {
         val appUser = userRepository.findByEmail(user.username).get()
-        val habit = habitService.getHabitsForUser(appUser).find { it.id == id }
+        val habit = habitService.getRawHabitsForUser(appUser).find { it.id == id }
             ?: throw IllegalArgumentException("Habit not found")
 
-        val map = habitService.getHabitCompletionMap(
-            habit,
-            LocalDate.parse(startDate),
-            LocalDate.parse(endDate)
-        )
-
-        // Convert LocalDate keys to string for JSON serialization
-        return map.mapKeys { it.key.toString() }
+        return habitService.unCompleteHabit(habit, LocalDate.parse(date))
     }
 
+    @PostMapping("/{id}/uncomplete")
+    fun unCompleteHabit(
+        @AuthenticationPrincipal user: SecurityUser,
+        @PathVariable id: Long
+    ): HabitResponseDTO {
+        val appUser = userRepository.findByEmail(user.username).get()
+        val habit = habitService.getRawHabitsForUser(appUser).find { it.id == id }
+            ?: throw IllegalArgumentException("Habit not found")
 
+        return habitService.unCompleteHabit(habit)
+    }
 
     @PutMapping("/{id}")
     fun updateHabit(
         @AuthenticationPrincipal user: SecurityUser,
         @PathVariable id: Long,
         @RequestBody habit: Habit
-    ): Habit {
+    ): HabitResponseDTO {
         val appUser = userRepository.findByEmail(user.username).get()
-        val existingHabit = habitService.getHabitsForUser(appUser).find { it.id == id }
+        val existingHabit = habitService.getRawHabitsForUser(appUser).find { it.id == id }
             ?: throw IllegalArgumentException("Habit not found")
 
         existingHabit.name = habit.name
         existingHabit.frequency = habit.frequency
-        existingHabit.completedToday = habit.completedToday
 
         return habitService.updateHabit(existingHabit)
     }
